@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Pressable, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
+import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek, subMonths } from 'date-fns';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import FAB from '../../src/components/common/FAB';
+import Sidebar from '../../src/components/common/Sidebar';
+import { useEventStore } from '../../src/stores/useEventStore';
+import { useLogStore } from '../../src/stores/useLogStore';
+import { useThemeStore } from '../../src/stores/useThemeStore';
+import { useTodoStore } from '../../src/stores/useTodoStore';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
-import { useTodoStore } from '../../src/stores/useTodoStore';
-import { useLogStore } from '../../src/stores/useLogStore';
-import { useEventStore } from '../../src/stores/useEventStore';
-import { useRouter } from 'expo-router';
-import FAB from '../../src/components/common/FAB';
-import { useThemeStore } from '../../src/stores/useThemeStore';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -22,6 +23,7 @@ export default function CalendarTab() {
   const { logs, loadLogs } = useLogStore();
   const { events, loadEvents } = useEventStore();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
     loadTodos();
@@ -61,14 +63,22 @@ export default function CalendarTab() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
+      
       {/* Month Header */}
       <View style={styles.monthHeader}>
+        <Pressable onPress={() => setShowSidebar(true)} style={[styles.navBtn, { backgroundColor: tc.cardBackground }]}>
+          <MaterialIcons name="menu" size={24} color={tc.textPrimary} />
+        </Pressable>
         <Pressable onPress={goToPrevMonth} style={styles.navBtn}>
           <MaterialIcons name="chevron-left" size={28} color={tc.textPrimary} />
         </Pressable>
         <Text style={[styles.monthTitle, { color: tc.textPrimary }]}>{format(currentMonth, 'MMMM yyyy')}</Text>
         <Pressable onPress={goToNextMonth} style={styles.navBtn}>
           <MaterialIcons name="chevron-right" size={28} color={tc.textPrimary} />
+        </Pressable>
+        <Pressable onPress={() => setShowCreateMenu(true)} style={[styles.navBtn, { backgroundColor: tc.primary }]}>
+          <MaterialIcons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>
 

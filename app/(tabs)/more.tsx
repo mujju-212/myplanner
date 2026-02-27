@@ -1,13 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Switch, Alert } from 'react-native';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import Sidebar from '../../src/components/common/Sidebar';
+import { useSettingsStore } from '../../src/stores/useSettingsStore';
+import { useThemeStore } from '../../src/stores/useThemeStore';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
-import { useThemeStore } from '../../src/stores/useThemeStore';
-import { useSettingsStore } from '../../src/stores/useSettingsStore';
-import { exportAllData, importAllData, clearAllData, downloadJSON, triggerImportDialog } from '../../src/utils/dataUtils';
+import { clearAllData, downloadJSON, exportAllData, importAllData, triggerImportDialog } from '../../src/utils/dataUtils';
 
 interface MenuItemProps {
   icon: string;
@@ -41,6 +42,7 @@ export default function MoreTab() {
   const router = useRouter();
   const { isDark, toggleTheme, loadTheme, colors: themeColors } = useThemeStore();
   const { notificationsEnabled, toggleNotifications, loadSettings } = useSettingsStore();
+  const [showSidebar, setShowSidebar] = React.useState(false);
 
   useEffect(() => { loadTheme(); loadSettings(); }, []);
 
@@ -74,7 +76,19 @@ export default function MoreTab() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
+      
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header with menu button */}
+        <View style={styles.topBar}>
+          <TouchableOpacity 
+            style={[styles.menuButton, { backgroundColor: themeColors.cardBackground }]} 
+            onPress={() => setShowSidebar(true)}
+          >
+            <MaterialIcons name="menu" size={24} color={themeColors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        
         {/* Profile Card */}
         <LinearGradient
           colors={[colors.gradientStart, colors.gradientEnd]}
@@ -182,7 +196,17 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
-    paddingTop: 20,
+  },
+  topBar: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  menuButton: {
+    padding: 10,
+    borderRadius: 12,
   },
   profileCard: {
     flexDirection: 'row',

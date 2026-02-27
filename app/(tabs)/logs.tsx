@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView, Alert, TextInput, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { addDays, format, subDays } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { format, addDays, subDays } from 'date-fns';
-import { colors } from '../../src/theme/colors';
-import { typography } from '../../src/theme/typography';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Sidebar from '../../src/components/common/Sidebar';
 import { useLogStore } from '../../src/stores/useLogStore';
 import { useThemeStore } from '../../src/stores/useThemeStore';
+import { colors } from '../../src/theme/colors';
+import { typography } from '../../src/theme/typography';
 
 const MOODS = [
   { key: 'great', emoji: '😁', label: 'Great' },
@@ -28,6 +29,12 @@ export default function DailyLogScreen() {
   const [journal, setJournal] = useState('');
   const [rating, setRating] = useState(7);
   const [activeTab, setActiveTab] = useState<'write' | 'history'>('write');
+  
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterMood, setFilterMood] = useState<string | null>(null);
+  const [filterDateRange, setFilterDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -66,13 +73,42 @@ export default function DailyLogScreen() {
   const todayStr = format(selectedDate, 'EEEE, MMMM d');
   const isToday = format(new Date(), 'yyyy-MM-dd') === dateKey;
 
-  // Sort past logs newest first
-  const pastLogs = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  // Sort past logs newest first and apply filters
+  const pastLogs = [...logs]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .filter(log => {
+      // Search filter
+      if (searchQuery && !log.what_i_did?.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      // Mood filter
+      if (filterMood && log.mood !== filterMood) {
+        return false;
+      }
+      // Date range filter
+      if (filterDateRange !== 'all') {
+        const logDate = new Date(log.date);
+        const now = new Date();
+        const daysDiff = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (filterDateRange === 'week' && daysDiff > 7) return false;
+        if (filterDateRange === 'month' && daysDiff > 30) return false;
+        if (filterDateRange === 'year' && daysDiff > 365) return false;
+      }
+      return true;
+    });
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
-      {/* Header with date navigation */}
+      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
+      
+      {/* Header with date navigation and menu */}
       <View style={styles.header}>
+        <Pressable 
+          style={[styles.menuBtn, { backgroundColor: tc.cardBackground }]} 
+          onPress={() => setShowSidebar(true)}
+        >
+          <MaterialIcons name="menu" size={24} color={tc.textPrimary} />
+        </Pressable>
         <View style={[styles.dateSelector, { backgroundColor: tc.cardBackground }]}>
           <Pressable style={styles.arrow} onPress={goToPreviousDay}>
             <MaterialIcons name="chevron-left" size={28} color={tc.textSecondary} />
@@ -165,12 +201,75 @@ export default function DailyLogScreen() {
         </ScrollView>
       ) : (
         /* HISTORY TAB */
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1 }}>
+          {/* Search Bar */}
+          <View style={[styles.searchBar, { backgroundColor: tc.cardBackground }]}>
+            <MaterialIcons name="search" size={20} color={tc.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: tc.textPrimary }]}
+              placeholder="Search logs..."
+              placeholderTextColor={tc.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery('')}>
+                <MaterialIcons name="clear" size={20} color={tc.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {/* Filter Chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterContent}>
+            {/* Date Range Filters */}
+            <Pressable
+              style={[styles.filterChip, { backgroundColor: filterDateRange === 'all' ? tc.primary : tc.cardBackground }]}
+              onPress={() => setFilterDateRange('all')}
+            >
+              <Text style={[styles.filterChipText, { color: filterDateRange === 'all' ? '#FFF' : tc.textSecondary }]}>All Time</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.filterChip, { backgroundColor: filterDateRange === 'week' ? tc.primary : tc.cardBackground }]}
+              onPress={() => setFilterDateRange('week')}
+            >
+              <Text style={[styles.filterChipText, { color: filterDateRange === 'week' ? '#FFF' : tc.textSecondary }]}>This Week</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.filterChip, { backgroundColor: filterDateRange === 'month' ? tc.primary : tc.cardBackground }]}
+              onPress={() => setFilterDateRange('month')}
+            >
+              <Text style={[styles.filterChipText, { color: filterDateRange === 'month' ? '#FFF' : tc.textSecondary }]}>This Month</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.filterChip, { backgroundColor: filterDateRange === 'year' ? tc.primary : tc.cardBackground }]}
+              onPress={() => setFilterDateRange('year')}
+            >
+              <Text style={[styles.filterChipText, { color: filterDateRange === 'year' ? '#FFF' : tc.textSecondary }]}>This Year</Text>
+            </Pressable>
+            
+            {/* Mood Filters */}
+            {MOODS.map(m => (
+              <Pressable
+                key={m.key}
+                style={[styles.filterChip, { backgroundColor: filterMood === m.key ? tc.primary : tc.cardBackground }]}
+                onPress={() => setFilterMood(filterMood === m.key ? null : m.key)}
+              >
+                <Text style={styles.filterEmoji}>{m.emoji}</Text>
+                <Text style={[styles.filterChipText, { color: filterMood === m.key ? '#FFF' : tc.textSecondary }]}>{m.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {pastLogs.length === 0 ? (
             <View style={styles.emptyHistory}>
               <MaterialIcons name="event-note" size={64} color={tc.border} />
-              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No past logs yet.</Text>
-              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Start writing in the "Write" tab!</Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
+                {searchQuery || filterMood || filterDateRange !== 'all' ? 'No logs found matching your filters.' : 'No past logs yet.'}
+              </Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
+                {searchQuery || filterMood || filterDateRange !== 'all' ? 'Try adjusting your filters.' : 'Start writing in the "Write" tab!'}
+              </Text>
             </View>
           ) : (
             pastLogs.map(log => (
@@ -206,6 +305,7 @@ export default function DailyLogScreen() {
           )}
           <View style={{ height: 80 }} />
         </ScrollView>
+        </View>
       )}
 
       {/* Save Button - only on write tab */}
@@ -225,7 +325,8 @@ export default function DailyLogScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 8 },
+  header: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  menuBtn: { padding: 8, borderRadius: 12 },
   dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 16, marginBottom: 10 },
   dateInfo: { alignItems: 'center' as const },
   todayLabel: { fontSize: typography.sizes.xs, fontWeight: typography.weights.bold as any, marginBottom: 2 },
@@ -264,4 +365,12 @@ const styles = StyleSheet.create({
   historyRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   historyRating: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   historyRatingText: { fontSize: typography.sizes.sm, fontWeight: typography.weights.semiBold as any },
+  // Search & Filter styles
+  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 20, marginBottom: 12, borderRadius: 12 },
+  searchInput: { flex: 1, fontSize: typography.sizes.md, paddingVertical: 4 },
+  filterRow: { marginBottom: 12 },
+  filterContent: { paddingHorizontal: 20, gap: 8 },
+  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
+  filterChipText: { fontSize: typography.sizes.xs, fontWeight: typography.weights.medium as any },
+  filterEmoji: { fontSize: 14 },
 });

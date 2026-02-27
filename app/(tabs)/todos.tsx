@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Ref
 import { useRouter } from 'expo-router';
 import TodoItem from '../../src/components/todo/TodoItem';
 import FAB from '../../src/components/common/FAB';
+import Sidebar from '../../src/components/common/Sidebar';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
 import { useTodoStore } from '../../src/stores/useTodoStore';
@@ -17,6 +18,7 @@ export default function TodosTab() {
   const { todos, loadTodos, completeTodo, uncompleteTodo, isLoading } = useTodoStore();
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const filteredTodos = useMemo(() => {
     if (!searchQuery.trim()) return todos;
@@ -74,7 +76,10 @@ export default function TodosTab() {
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>My Todos</Text>
         <View style={styles.headerStats}>
-          <View style={[styles.statBadge, { backgroundColor: tc.cardBackground }]}>
+          <Pressable onPress={() => setShowSidebar(true)} style={({ pressed }) => [styles.statBadge, { backgroundColor: tc.cardBackground, opacity: pressed ? 0.6 : 1, cursor: 'pointer' as any }]}>
+            <MaterialIcons name="menu" size={20} color={tc.textPrimary} />
+          </Pressable>
+          <View style={[styles.statBadge, { marginLeft: 8, backgroundColor: tc.cardBackground }]}>
             <MaterialIcons name="pending-actions" size={14} color={tc.warning} />
             <Text style={[styles.statText, { color: tc.textPrimary }]}>{pendingCount}</Text>
           </View>
@@ -162,6 +167,7 @@ export default function TodosTab() {
       </ScrollView>
 
       <FAB onPress={() => router.push('/todo/create')} />
+      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
     </SafeAreaView>
   );
 }
